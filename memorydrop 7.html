@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>MemoryDrop</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Instrument+Serif:ital@0;1&family=Syne+Mono&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a0c;--surface:#131316;--surface2:#1c1c22;--surface3:#242430;
+  --border:#2e2e3a;--text:#eeedf5;--muted:#65647a;
+  --accent:#7c6aff;--accent2:#ff6a8a;--green:#3ddc84;--yellow:#f5c542;--red:#ff5c5c;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow-x:hidden;}
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);}
+.screen{display:none;min-height:100vh;flex-direction:column;}
+.screen.active{display:flex;}
+
+/* HOME */
+#home{align-items:center;justify-content:center;padding:2rem;
+  background:radial-gradient(ellipse 140% 80% at 70% -10%,#1c1040 0%,var(--bg) 55%);}
+.home-card{max-width:400px;width:100%;display:flex;flex-direction:column;gap:1.5rem;}
+.logo-row{display:flex;align-items:center;gap:.75rem;}
+.logo-gem{width:48px;height:48px;border-radius:14px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex;align-items:center;justify-content:center;font-size:1.5rem;
+  box-shadow:0 0 36px #7c6aff55;flex-shrink:0;}
+.game-name{font-family:'Instrument Serif',serif;font-size:2.8rem;line-height:1;
+  background:linear-gradient(110deg,var(--text) 50%,var(--accent));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.game-sub{color:var(--muted);font-size:.9rem;line-height:1.65;}
+.home-choices{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;}
+.choice-card{background:var(--surface2);border:1px solid var(--border);
+  border-radius:14px;padding:1.5rem 1rem;text-align:center;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:.6rem;
+  transition:border-color .2s,transform .15s,background .2s;}
+.choice-card:hover{border-color:var(--accent);background:var(--surface3);}
+.choice-card:active{transform:scale(.97);}
+.choice-card.create{border-color:#7c6aff55;}
+.choice-card.join{border-color:#ff6a8a55;}
+.choice-icon{font-size:2rem;}
+.choice-title{font-size:.95rem;font-weight:700;}
+.choice-sub{font-size:.75rem;color:var(--muted);}
+
+/* join modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);
+  display:none;align-items:flex-end;justify-content:center;z-index:1000;
+  backdrop-filter:blur(4px);}
+.modal-bg.open{display:flex;}
+.bottom-sheet{background:var(--surface);border-radius:20px 20px 0 0;
+  padding:1.5rem;width:100%;max-width:480px;display:flex;flex-direction:column;gap:1rem;}
+.sheet-title{font-family:'Instrument Serif',serif;font-size:1.4rem;text-align:center;}
+.sheet-sub{color:var(--muted);font-size:.82rem;text-align:center;line-height:1.6;}
+.code-row{display:flex;gap:.5rem;}
+.code-input{flex:1;padding:.9rem 1rem;background:var(--surface2);border:1px solid var(--border);
+  border-radius:10px;color:var(--text);font-family:'Syne Mono',monospace;
+  font-size:1.3rem;letter-spacing:.3em;text-transform:uppercase;outline:none;
+  transition:border-color .2s;text-align:center;}
+.code-input:focus{border-color:var(--accent);}
+.code-input::placeholder{letter-spacing:.05em;font-size:.82rem;color:var(--muted);text-transform:none;}
+.btn-go{padding:.9rem 1.2rem;background:var(--accent);color:#fff;border:none;
+  border-radius:10px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;
+  font-size:.9rem;white-space:nowrap;}
+.cancel-btn{background:none;border:none;color:var(--muted);cursor:pointer;
+  font-family:'Syne',sans-serif;font-size:.85rem;padding:.5rem;text-align:center;}
+
+/* buttons */
+.btn{padding:.9rem 1.5rem;border-radius:10px;border:none;cursor:pointer;
+  font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;
+  transition:transform .15s,opacity .15s;}
+.btn:active{transform:scale(.97);}
+.btn-accent{background:linear-gradient(135deg,var(--accent),#5a48d4);color:#fff;
+  box-shadow:0 4px 24px #7c6aff33;}
+.btn-surface{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+.btn-full{width:100%;}
+
+/* CREATOR */
+#creator{background:var(--bg);padding:1.25rem;align-items:center;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.creator-inner{max-width:560px;width:100%;display:flex;flex-direction:column;gap:1.1rem;padding-bottom:3rem;}
+.page-header{display:flex;align-items:center;gap:.75rem;}
+.back-btn{width:36px;height:36px;border-radius:9px;background:var(--surface2);
+  border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:1.1rem;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.page-title{font-size:1.2rem;font-weight:700;}
+.page-sub{color:var(--muted);font-size:.78rem;margin-left:auto;font-family:'Syne Mono',monospace;}
+.prog-row{display:flex;gap:5px;}
+.prog-dot{flex:1;height:4px;border-radius:2px;background:var(--border);transition:background .3s;}
+.prog-dot.done{background:var(--accent);}
+.prog-dot.active{background:var(--accent2);}
+.upload-zone{border:2px dashed var(--border);border-radius:14px;padding:2rem 1.5rem;
+  text-align:center;cursor:pointer;transition:border-color .2s;position:relative;}
+.upload-zone:hover{border-color:var(--accent);}
+.upload-zone.has-img{border-style:solid;border-color:var(--accent);padding:0;overflow:hidden;border-radius:12px;}
+.upload-zone input{display:none;}
+.uz-icon{font-size:2rem;margin-bottom:.5rem;}
+.uz-title{font-weight:700;font-size:.95rem;margin-bottom:.2rem;}
+.uz-hint{color:var(--muted);font-size:.78rem;}
+#upload-preview{width:100%;max-height:260px;object-fit:cover;border-radius:10px;display:none;}
+.meta-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;
+  padding:.9rem;display:none;flex-direction:column;gap:.55rem;}
+.meta-card.visible{display:flex;}
+.meta-row{display:flex;justify-content:space-between;align-items:center;gap:.5rem;}
+.meta-label{color:var(--muted);font-size:.76rem;flex-shrink:0;}
+.meta-val{font-family:'Syne Mono',monospace;font-size:.76rem;color:var(--text);text-align:right;}
+.meta-val.good{color:var(--green);}
+.meta-val.bad{color:var(--red);}
+.meta-val.warn{color:var(--yellow);}
+.field-group{display:flex;flex-direction:column;gap:.35rem;}
+.field-label{font-size:.7rem;color:var(--muted);font-weight:700;letter-spacing:.07em;text-transform:uppercase;}
+.field-row{display:flex;gap:.4rem;flex-wrap:wrap;}
+.field-input{flex:1;padding:.6rem .7rem;background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-family:'Syne',sans-serif;font-size:.87rem;
+  outline:none;transition:border-color .2s;min-width:58px;}
+.field-input:focus{border-color:var(--accent);}
+select.field-input option{background:var(--surface2);}
+#creator-map{height:210px;border-radius:12px;overflow:hidden;border:1px solid var(--border);}
+.map-hint-text{font-size:.7rem;color:var(--muted);text-align:center;font-family:'Syne Mono',monospace;}
+.rounds-list{display:flex;flex-direction:column;gap:.4rem;}
+.round-item{background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+  padding:.55rem .75rem;display:flex;align-items:center;gap:.6rem;}
+.round-thumb{width:40px;height:40px;border-radius:7px;object-fit:cover;flex-shrink:0;}
+.round-info{flex:1;min-width:0;}
+.round-info-name{font-size:.8rem;font-weight:700;}
+.round-info-meta{font-size:.68rem;color:var(--muted);font-family:'Syne Mono',monospace;margin-top:1px;}
+.round-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;padding:4px;}
+.creator-btns{display:flex;gap:.5rem;}
+
+/* share box */
+.share-box{background:linear-gradient(135deg,#1c1040,#18102e);border:1px solid var(--accent);
+  border-radius:14px;padding:1.5rem;text-align:center;display:none;flex-direction:column;gap:.85rem;}
+.share-box.visible{display:flex;}
+.share-code-big{font-family:'Syne Mono',monospace;font-size:3.2rem;letter-spacing:.35em;
+  color:var(--accent);font-weight:700;}
+.share-hint{color:var(--muted);font-size:.82rem;line-height:1.6;}
+.share-btns{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;}
+.share-btn{padding:.65rem 1.2rem;border:none;border-radius:8px;cursor:pointer;
+  font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem;transition:opacity .15s;}
+.share-btn:hover{opacity:.85;}
+.share-btn.code{background:var(--accent);color:#fff;}
+.share-btn.link{background:var(--surface3);color:var(--text);border:1px solid var(--border);}
+.expires-note{font-size:.72rem;color:var(--muted);font-family:'Syne Mono',monospace;}
+
+/* GAME */
+#game{background:var(--bg);overflow:hidden;}
+.game-topbar{display:flex;align-items:center;justify-content:space-between;
+  padding:.55rem .9rem;background:var(--surface);border-bottom:1px solid var(--border);
+  flex-shrink:0;gap:.75rem;z-index:10;}
+.game-logo{font-family:'Instrument Serif',serif;font-size:1.05rem;color:var(--accent);}
+.round-pills{display:flex;gap:4px;}
+.round-pill{width:22px;height:5px;border-radius:3px;background:var(--border);transition:background .3s;}
+.round-pill.done{background:var(--accent);}
+.round-pill.current{background:var(--accent2);}
+.score-chip{font-family:'Syne Mono',monospace;font-size:.75rem;color:var(--yellow);white-space:nowrap;}
+.game-layout{display:flex;overflow:hidden;flex:1;}
+.photo-side{flex:1.3;position:relative;overflow:hidden;background:#000;}
+.photo-side img{width:100%;height:100%;object-fit:cover;transition:opacity .4s;}
+.photo-fade{position:absolute;inset:0;
+  background:linear-gradient(to right,transparent 55%,rgba(10,10,12,.5));pointer-events:none;}
+.guess-side{width:320px;flex-shrink:0;display:flex;flex-direction:column;
+  background:var(--surface);border-left:1px solid var(--border);overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.map-wrap{flex:1;min-height:200px;position:relative;}
+.map-wrap-label{position:absolute;top:7px;left:7px;z-index:500;
+  background:rgba(19,19,22,.9);padding:3px 7px;border-radius:6px;
+  font-size:.6rem;font-family:'Syne Mono',monospace;letter-spacing:.1em;
+  color:var(--muted);pointer-events:none;text-transform:uppercase;}
+#player-map{width:100%;height:100%;}
+.date-guess-section{padding:.85rem;border-top:1px solid var(--border);
+  display:flex;flex-direction:column;gap:.65rem;}
+.dg-title{font-size:.6rem;font-family:'Syne Mono',monospace;
+  letter-spacing:.15em;text-transform:uppercase;color:var(--muted);}
+.date-fields{display:flex;flex-direction:column;gap:.4rem;}
+.date-field-row{display:flex;gap:.35rem;align-items:center;}
+.dfl{font-size:.68rem;color:var(--muted);width:42px;flex-shrink:0;}
+.dfl.bonus{color:var(--accent);}
+.date-segment{flex:1;padding:.5rem .4rem;background:var(--surface2);border:1px solid var(--border);
+  border-radius:7px;color:var(--text);font-family:'Syne Mono',monospace;font-size:.85rem;
+  text-align:center;outline:none;transition:border-color .2s;}
+.date-segment:focus{border-color:var(--accent);}
+select.date-segment option{background:var(--surface2);}
+.hour-slider-wrap{flex:1;display:flex;flex-direction:column;gap:3px;}
+.hour-display{font-family:'Syne Mono',monospace;font-size:.95rem;
+  text-align:center;font-weight:700;transition:color .2s;}
+.hour-slider{width:100%;appearance:none;-webkit-appearance:none;height:4px;
+  border-radius:2px;outline:none;cursor:pointer;background:var(--border);}
+.hour-slider::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;
+  width:22px;height:22px;border-radius:50%;
+  background:var(--accent);border:2px solid #fff;cursor:grab;
+  box-shadow:0 0 8px #7c6aff66;}
+.hour-range{display:flex;justify-content:space-between;
+  font-size:.6rem;font-family:'Syne Mono',monospace;color:var(--muted);}
+.pin-row{display:flex;align-items:center;gap:.4rem;font-size:.7rem;
+  color:var(--muted);font-family:'Syne Mono',monospace;}
+.pin-dot{width:7px;height:7px;border-radius:50%;background:var(--border);
+  flex-shrink:0;transition:background .3s,box-shadow .3s;}
+.pin-dot.placed{background:var(--green);box-shadow:0 0 6px var(--green);}
+.submit-btn{width:100%;padding:.85rem;
+  background:linear-gradient(135deg,var(--accent),#5a48d4);color:#fff;
+  border:none;border-radius:9px;cursor:pointer;font-family:'Syne',sans-serif;
+  font-weight:700;font-size:.85rem;transition:opacity .2s,transform .1s;}
+.submit-btn:hover:not(:disabled){transform:translateY(-1px);}
+.submit-btn:disabled{opacity:.32;cursor:not-allowed;}
+
+/* RESULT */
+#result{background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.result-topbar{display:flex;align-items:center;justify-content:space-between;
+  padding:.55rem .9rem;background:var(--surface);border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:10;}
+.result-topbar-title{font-family:'Instrument Serif',serif;font-size:1.05rem;}
+.result-body{display:flex;flex-direction:column;}
+#result-map-wrap{height:280px;flex-shrink:0;}
+#result-map{width:100%;height:100%;}
+.result-panel{padding:1.1rem;display:flex;flex-direction:column;gap:.9rem;padding-bottom:2.5rem;}
+.score-hero{text-align:center;padding:1rem 0;border-bottom:1px solid var(--border);}
+.score-hero-num{font-family:'Instrument Serif',serif;font-size:3.2rem;line-height:1;
+  background:linear-gradient(135deg,var(--yellow),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.score-hero-label{font-size:.62rem;font-family:'Syne Mono',monospace;
+  letter-spacing:.15em;color:var(--muted);text-transform:uppercase;margin-top:.15rem;}
+.score-breakdown{display:flex;flex-direction:column;gap:.55rem;}
+.sb-row{display:flex;justify-content:space-between;align-items:flex-start;
+  padding-bottom:.55rem;border-bottom:1px solid var(--border);}
+.sb-left{display:flex;flex-direction:column;gap:2px;}
+.sb-name{font-size:.8rem;color:var(--muted);}
+.sb-detail{font-size:.68rem;font-family:'Syne Mono',monospace;color:var(--muted);}
+.sb-pts{font-family:'Syne Mono',monospace;font-size:.9rem;font-weight:700;}
+.sb-pts.max{color:var(--green);}
+.sb-pts.good{color:var(--yellow);}
+.sb-pts.bad{color:var(--red);}
+.answer-reveal{background:var(--surface2);border:1px solid var(--border);
+  border-radius:10px;padding:.85rem;display:flex;flex-direction:column;gap:.4rem;}
+.ar-title{font-size:.62rem;font-family:'Syne Mono',monospace;
+  letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:.2rem;}
+.ar-row{display:flex;justify-content:space-between;align-items:center;}
+.ar-label{font-size:.78rem;color:var(--muted);}
+.ar-val{font-family:'Syne Mono',monospace;font-size:.75rem;color:var(--text);}
+.ar-val.correct{color:var(--green);}
+.next-btn{width:100%;padding:.9rem;background:linear-gradient(135deg,var(--accent),#5a48d4);
+  color:#fff;border:none;border-radius:10px;cursor:pointer;font-family:'Syne',sans-serif;
+  font-weight:700;font-size:.88rem;}
+
+/* ANALYSIS */
+#analysis{background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.analysis-topbar{display:flex;align-items:center;justify-content:space-between;
+  padding:.65rem .9rem;background:var(--surface);border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:10;}
+.analysis-title{font-family:'Instrument Serif',serif;font-size:1.1rem;}
+#analysis-map{width:100%;height:300px;flex-shrink:0;}
+.analysis-body{padding:1rem;display:flex;flex-direction:column;gap:1rem;padding-bottom:3rem;}
+.total-score-card{background:linear-gradient(135deg,#1c1040,#18102e);
+  border:1px solid var(--accent);border-radius:14px;padding:1.25rem;text-align:center;}
+.tsc-score{font-family:'Instrument Serif',serif;font-size:3.5rem;line-height:1;
+  background:linear-gradient(135deg,var(--yellow),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.tsc-max{font-family:'Syne Mono',monospace;font-size:.75rem;color:var(--muted);margin:.2rem 0 .5rem;}
+.tsc-rank{display:inline-block;padding:.3rem 1.2rem;border:1px solid var(--accent);
+  border-radius:999px;font-size:.78rem;color:var(--accent);font-weight:700;}
+.rounds-analysis{display:flex;flex-direction:column;gap:.6rem;}
+.round-analysis-card{background:var(--surface2);border:1px solid var(--border);
+  border-radius:12px;overflow:hidden;cursor:pointer;transition:border-color .2s;}
+.round-analysis-card:hover{border-color:var(--accent);}
+.rac-header{display:flex;align-items:center;gap:.75rem;padding:.75rem;}
+.rac-thumb{width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0;}
+.rac-info{flex:1;min-width:0;}
+.rac-title{font-size:.85rem;font-weight:700;}
+.rac-sub{font-size:.72rem;color:var(--muted);font-family:'Syne Mono',monospace;margin-top:2px;}
+.rac-score{font-family:'Syne Mono',monospace;font-size:.9rem;font-weight:700;color:var(--yellow);}
+.rac-chevron{color:var(--muted);font-size:.9rem;transition:transform .2s;flex-shrink:0;margin-left:.25rem;}
+.rac-chevron.open{transform:rotate(90deg);}
+.rac-detail{display:none;border-top:1px solid var(--border);padding:.75rem;}
+.rac-detail.open{display:block;}
+.rac-breakdown{display:flex;flex-direction:column;gap:.4rem;}
+.rac-row{display:flex;justify-content:space-between;font-size:.78rem;}
+.rac-row-label{color:var(--muted);}
+.rac-row-val{font-family:'Syne Mono',monospace;}
+.rac-row-val.good{color:var(--green);}
+.rac-row-val.mid{color:var(--yellow);}
+.rac-row-val.bad{color:var(--red);}
+.play-again-btn{width:100%;padding:1rem;background:linear-gradient(135deg,var(--accent),#5a48d4);
+  color:#fff;border:none;border-radius:12px;cursor:pointer;font-family:'Syne',sans-serif;
+  font-weight:700;font-size:.95rem;}
+
+/* LOADING */
+#loading{align-items:center;justify-content:center;gap:1rem;background:var(--bg);}
+.spinner{width:38px;height:38px;border:3px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-text{color:var(--muted);font-size:.85rem;font-family:'Syne Mono',monospace;}
+
+/* TOAST */
+.toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);
+  background:var(--surface3);border:1px solid var(--border);border-radius:8px;
+  padding:.6rem 1.2rem;font-size:.82rem;color:var(--text);
+  z-index:9999;opacity:0;transition:opacity .3s;white-space:nowrap;pointer-events:none;}
+.toast.show{opacity:1;}
+
+/* desktop */
+@media(min-width:651px){
+  #game{height:100vh;}
+  .game-layout{height:calc(100vh - 44px);}
+  #result{overflow:hidden;height:100vh;}
+  .result-body{flex-direction:row;height:calc(100vh - 44px);overflow:hidden;}
+  #result-map-wrap{flex:1.4;height:100%;}
+  .result-panel{width:320px;overflow-y:auto;}
+  #analysis-map{height:380px;}
+}
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div id="home" class="screen active">
+  <div class="home-card" style="margin:auto;">
+    <div class="logo-row">
+      <div class="logo-gem">📍</div>
+      <div class="game-name">MemoryDrop</div>
+    </div>
+    <p class="game-sub">A guessing game made from your real photos. Drop a pin, pick the date — how well do you know your own memories?</p>
+    <div class="home-choices">
+      <div class="choice-card create" onclick="showScreen('creator');initCreatorMap()">
+        <div class="choice-icon">🎬</div>
+        <div class="choice-title">Create</div>
+        <div class="choice-sub">Upload photos &amp; share</div>
+      </div>
+      <div class="choice-card join" onclick="openJoin()">
+        <div class="choice-icon">🎮</div>
+        <div class="choice-title">Join</div>
+        <div class="choice-sub">Enter a code to play</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- JOIN MODAL -->
+<div class="modal-bg" id="join-modal" onclick="if(event.target===this)closeJoin()">
+  <div class="bottom-sheet">
+    <div class="sheet-title">Join a Game</div>
+    <div class="sheet-sub">Ask your friend for the 6-digit code,<br>or tap their link directly</div>
+    <div class="code-row">
+      <input class="code-input" id="join-code" maxlength="6" placeholder="Enter code">
+      <button class="btn-go" onclick="joinGame()">Play →</button>
+    </div>
+    <button class="cancel-btn" onclick="closeJoin()">Cancel</button>
+  </div>
+</div>
+
+<!-- CREATOR -->
+<div id="creator" class="screen">
+  <div class="creator-inner">
+    <div class="page-header">
+      <button class="back-btn" onclick="showScreen('home')">←</button>
+      <span class="page-title">Create Game</span>
+      <span class="page-sub" id="creator-sub">Round 1 / 5</span>
+    </div>
+    <div class="prog-row" id="prog-row"></div>
+
+    <div class="upload-zone" id="upload-zone" onclick="document.getElementById('photo-input').click()">
+      <div class="uz-icon" id="uz-icon">🖼️</div>
+      <div class="uz-title" id="uz-title">Upload a photo</div>
+      <div class="uz-hint" id="uz-hint">GPS &amp; date read automatically</div>
+      <input type="file" id="photo-input" accept="image/*" onchange="handlePhoto(this)">
+      <img id="upload-preview" style="width:100%;max-height:260px;object-fit:cover;border-radius:10px;display:none;">
+    </div>
+
+    <div class="meta-card" id="meta-card">
+      <div class="meta-row">
+        <span class="meta-label">📅 Date &amp; Time</span>
+        <span class="meta-val" id="meta-datetime">—</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">📍 GPS</span>
+        <span class="meta-val" id="meta-gps">—</span>
+      </div>
+      <div class="meta-row" id="meta-warn-row" style="display:none">
+        <span class="meta-label">⚠️</span>
+        <span class="meta-val warn" id="meta-warn">—</span>
+      </div>
+    </div>
+
+    <div id="manual-section" style="display:none">
+      <div class="field-group">
+        <div class="field-label">Enter date manually</div>
+        <div class="field-row">
+          <input class="field-input" id="man-year" type="number" placeholder="Year" min="2020" max="2026" style="max-width:85px">
+          <select class="field-input" id="man-month">
+            <option value="">Month</option>
+            <option value="1">Jan</option><option value="2">Feb</option><option value="3">Mar</option>
+            <option value="4">Apr</option><option value="5">May</option><option value="6">Jun</option>
+            <option value="7">Jul</option><option value="8">Aug</option><option value="9">Sep</option>
+            <option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option>
+          </select>
+          <input class="field-input" id="man-day" type="number" placeholder="Day" min="1" max="31" style="max-width:68px">
+          <input class="field-input" id="man-hour" type="number" placeholder="Hr" min="0" max="23" style="max-width:60px">
+        </div>
+      </div>
+    </div>
+
+    <div id="map-section" style="display:none">
+      <div class="field-group">
+        <div class="field-label">Confirm location</div>
+        <div id="creator-map"></div>
+        <div class="map-hint-text" id="creator-map-hint">Click map to set location manually</div>
+      </div>
+    </div>
+
+    <div id="rounds-section" style="display:none">
+      <div class="field-label" style="margin-bottom:.4rem">Saved Rounds</div>
+      <div class="rounds-list" id="rounds-list"></div>
+    </div>
+
+    <div class="creator-btns">
+      <button class="btn btn-surface btn-full" id="save-round-btn" onclick="saveRound()" style="display:none;flex:1">＋ Save Round</button>
+      <button class="btn btn-accent btn-full" id="finish-btn" onclick="finishGame()" style="display:none;flex:1">🚀 Create Game</button>
+    </div>
+
+    <div class="share-box" id="share-box">
+      <div style="font-weight:700;font-size:1rem">🎉 Game is live!</div>
+      <div class="share-code-big" id="share-code">——</div>
+      <div class="share-hint">Share the code or send a direct link — expires in 7 days</div>
+      <div class="share-btns">
+        <button class="share-btn code" onclick="copyCode()">📋 Copy Code</button>
+        <button class="share-btn link" onclick="copyLink()">🔗 Copy Link</button>
+      </div>
+      <div class="expires-note" id="expires-note">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="game" class="screen">
+  <div class="game-topbar">
+    <span class="game-logo">MemoryDrop</span>
+    <div class="round-pills" id="round-pills"></div>
+    <span class="score-chip" id="score-chip">0 pts</span>
+  </div>
+  <div class="game-layout">
+    <div class="photo-side">
+      <img id="game-photo" src="" alt="">
+      <div class="photo-fade"></div>
+    </div>
+    <div class="guess-side">
+      <div class="map-wrap">
+        <div class="map-wrap-label">Drop your pin</div>
+        <div id="player-map"></div>
+      </div>
+      <div class="date-guess-section">
+        <div class="dg-title">When was this taken?</div>
+        <div class="date-fields">
+          <div class="date-field-row">
+            <span class="dfl">Year</span>
+            <input class="date-segment" id="g-year" type="number" min="2022" max="2026" placeholder="e.g. 2024" oninput="checkReady()">
+          </div>
+          <div class="date-field-row">
+            <span class="dfl">Month</span>
+            <select class="date-segment" id="g-month" onchange="checkReady()">
+              <option value="">— pick —</option>
+              <option value="1">January</option><option value="2">February</option>
+              <option value="3">March</option><option value="4">April</option>
+              <option value="5">May</option><option value="6">June</option>
+              <option value="7">July</option><option value="8">August</option>
+              <option value="9">September</option><option value="10">October</option>
+              <option value="11">November</option><option value="12">December</option>
+            </select>
+          </div>
+          <div class="date-field-row">
+            <span class="dfl">Day</span>
+            <input class="date-segment" id="g-day" type="number" min="1" max="31" placeholder="1–31" oninput="checkReady()">
+          </div>
+          <div class="date-field-row" style="align-items:flex-start;padding-top:2px">
+            <span class="dfl bonus" style="padding-top:8px">Hour ✨</span>
+            <div class="hour-slider-wrap">
+              <div class="hour-display" id="hour-display" style="color:var(--muted)">— : —</div>
+              <input type="range" class="hour-slider" id="g-hour" min="-1" max="23" value="-1" oninput="updateHourDisplay(this.value)">
+              <div class="hour-range"><span>skip</span><span>23:00</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="pin-row">
+          <div class="pin-dot" id="pin-dot"></div>
+          <span id="pin-label">No pin placed yet</span>
+        </div>
+        <button class="submit-btn" id="submit-btn" onclick="submitGuess()" disabled>Submit Guess</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RESULT -->
+<div id="result" class="screen">
+  <div class="result-topbar">
+    <span class="result-topbar-title" id="result-round-label">Round 1</span>
+    <span class="score-chip" id="result-running">Total: 0</span>
+  </div>
+  <div class="result-body">
+    <div id="result-map-wrap"><div id="result-map"></div></div>
+    <div class="result-panel">
+      <div class="score-hero">
+        <div class="score-hero-num" id="round-total">0</div>
+        <div class="score-hero-label">points this round</div>
+      </div>
+      <div class="score-breakdown">
+        <div class="sb-row">
+          <div class="sb-left"><span class="sb-name">📍 Location</span><span class="sb-detail" id="dist-detail">—</span></div>
+          <span class="sb-pts" id="loc-pts">—</span>
+        </div>
+        <div class="sb-row">
+          <div class="sb-left"><span class="sb-name">📅 Year</span><span class="sb-detail" id="year-detail">—</span></div>
+          <span class="sb-pts" id="year-pts">—</span>
+        </div>
+        <div class="sb-row">
+          <div class="sb-left"><span class="sb-name">🗓 Month</span><span class="sb-detail" id="month-detail">—</span></div>
+          <span class="sb-pts" id="month-pts">—</span>
+        </div>
+        <div class="sb-row">
+          <div class="sb-left"><span class="sb-name">📆 Day</span><span class="sb-detail" id="day-detail">—</span></div>
+          <span class="sb-pts" id="day-pts">—</span>
+        </div>
+        <div class="sb-row" style="border:none">
+          <div class="sb-left"><span class="sb-name">⏰ Hour bonus ✨</span><span class="sb-detail" id="hour-detail">—</span></div>
+          <span class="sb-pts" id="hour-pts">—</span>
+        </div>
+      </div>
+      <div class="answer-reveal">
+        <div class="ar-title">Correct Answer</div>
+        <div class="ar-row"><span class="ar-label">Date</span><span class="ar-val correct" id="ans-date">—</span></div>
+        <div class="ar-row"><span class="ar-label">Your guess</span><span class="ar-val" id="ans-your">—</span></div>
+        <div class="ar-row"><span class="ar-label">Coords</span><span class="ar-val correct" id="ans-loc">—</span></div>
+      </div>
+      <button class="next-btn" id="next-btn" onclick="nextRound()">Next Round →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ANALYSIS -->
+<div id="analysis" class="screen">
+  <div class="analysis-topbar">
+    <span class="analysis-title">📊 Game Analysis</span>
+    <span class="score-chip" id="analysis-score-chip">—</span>
+  </div>
+  <div id="analysis-map"></div>
+  <div class="analysis-body">
+    <div class="total-score-card">
+      <div class="tsc-score" id="analysis-total">0</div>
+      <div class="tsc-max" id="analysis-max">/ 52,500 possible</div>
+      <div class="tsc-rank" id="analysis-rank">—</div>
+    </div>
+    <div class="field-label" style="margin-bottom:-.25rem">Round Breakdown</div>
+    <div class="rounds-analysis" id="rounds-analysis"></div>
+    <button class="play-again-btn" onclick="showScreen('home')">↩ Back to Home</button>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div id="loading" class="screen">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loading-text">Loading…</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.js"></script>
+<script>
+const SUPA_URL='https://flwtfmhfnwdngnnpdtgk.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsd3RmbWhmbndkbmdubnBkdGdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNDYwNDAsImV4cCI6MjA5MzcyMjA0MH0.ilDqRlTTBL3igFDslLmKfkK-32MWfsP6uwSngsdrg88';
+const HEADERS={'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};
+const BASE_URL='https://memory-drop-omega.vercel.app';
+
+async function dbInsert(table,data){
+  const r=await fetch(`${SUPA_URL}/rest/v1/${table}`,{method:'POST',headers:{...HEADERS,'Prefer':'return=representation'},body:JSON.stringify(data)});
+  if(!r.ok)throw new Error(await r.text());
+  return r.json();
+}
+async function dbSelect(table,qs){
+  const r=await fetch(`${SUPA_URL}/rest/v1/${table}?${qs}`,{headers:HEADERS});
+  if(!r.ok)throw new Error(await r.text());
+  return r.json();
+}
+
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+function setLoading(msg='Loading…'){
+  document.getElementById('loading-text').textContent=msg;
+  showScreen('loading');
+}
+function toast(msg,dur=3000){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),dur);
+}
+function randCode(){
+  const ch='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length:6},()=>ch[Math.floor(Math.random()*ch.length)]).join('');
+}
+function fbCopy(t){
+  const el=document.createElement('textarea');el.value=t;
+  el.style.cssText='position:fixed;opacity:0';
+  document.body.appendChild(el);el.focus();el.select();
+  document.execCommand('copy');document.body.removeChild(el);
+}
+function doCopy(text,msg){
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>toast(msg)).catch(()=>{fbCopy(text);toast(msg);});
+  } else {fbCopy(text);toast(msg);}
+}
+
+// join modal
+function openJoin(){
+  document.getElementById('join-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('join-code').focus(),100);
+}
+function closeJoin(){document.getElementById('join-modal').classList.remove('open');}
+
+// check URL for ?code= on load
+window.addEventListener('load',()=>{
+  const params=new URLSearchParams(window.location.search);
+  const code=params.get('code');
+  if(code){
+    // auto-join from link
+    document.getElementById('join-code').value=code.toUpperCase();
+    joinGame();
+  }
+});
+
+// hour slider
+function updateHourDisplay(val){
+  val=parseInt(val);
+  const el=document.getElementById('hour-display');
+  if(val<0){el.textContent='— : —';el.style.color='var(--muted)';}
+  else{el.textContent=String(val).padStart(2,'0')+':00';el.style.color='var(--accent)';}
+}
+
+// compression
+function compressImage(dataUrl,targetKB=200){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      const c=document.createElement('canvas');
+      let w=img.width,h=img.height,q=0.75;
+      const max=900;
+      if(w>max||h>max){const s=max/Math.max(w,h);w=Math.round(w*s);h=Math.round(h*s);}
+      c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);
+      let result=c.toDataURL('image/jpeg',q);
+      while(result.length>targetKB*1024*1.37&&q>0.25){q=Math.round((q-.08)*100)/100;result=c.toDataURL('image/jpeg',q);}
+      resolve(result);
+    };
+    img.src=dataUrl;
+  });
+}
+
+// ── CREATOR ──
+let creatorRounds=[],currentRound={},creatorMapInst=null,creatorMarker=null;
+let lastGameCode='';
+
+function initCreatorMap(){
+  updateProgress();
+  setTimeout(()=>{
+    if(!creatorMapInst){
+      creatorMapInst=L.map('creator-map',{zoomControl:true,attributionControl:false}).setView([20,0],2);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(creatorMapInst);
+      creatorMapInst.on('click',e=>setCreatorPin(e.latlng.lat,e.latlng.lng));
+    }
+  },80);
+}
+
+function updateProgress(){
+  const total=5,cur=creatorRounds.length;
+  document.getElementById('creator-sub').textContent=`Round ${cur+1} / ${total}`;
+  document.getElementById('prog-row').innerHTML=
+    Array.from({length:total},(_,i)=>`<div class="prog-dot ${i<cur?'done':i===cur?'active':''}"></div>`).join('');
+  document.getElementById('rounds-section').style.display=cur>0?'block':'none';
+  if(cur>0)renderRoundsList();
+  document.getElementById('finish-btn').style.display=cur>=2?'block':'none';
+  document.getElementById('save-round-btn').style.display='none';
+}
+
+function handlePhoto(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async e=>{
+    const prev=document.getElementById('upload-preview');
+    const zone=document.getElementById('upload-zone');
+    prev.src=e.target.result;prev.style.display='block';
+    zone.classList.add('has-img');
+    ['uz-icon','uz-title','uz-hint'].forEach(id=>document.getElementById(id).style.display='none');
+    toast('Compressing photo…');
+    currentRound.imageDataUrl=await compressImage(e.target.result,200);
+    prev.src=currentRound.imageDataUrl;
+    toast('Photo ready ✓');
+    readExif(file);
+  };
+  reader.readAsDataURL(file);
+}
+
+function readExif(file){
+  currentRound.answer=null;
+  currentRound.lat=null;
+  currentRound.lng=null;
+  EXIF.getData(file,function(){
+    document.getElementById('meta-card').classList.add('visible');
+    document.getElementById('meta-warn-row').style.display='none';
+
+    // DATE
+    const dto=EXIF.getTag(this,'DateTimeOriginal')||EXIF.getTag(this,'DateTime');
+    if(dto&&dto.length>=16){
+      const p=dto.replace(' ',':').split(':');
+      if(p.length>=5&&+p[0]>2000){
+        currentRound.answer={year:+p[0],month:+p[1],day:+p[2],hour:+p[3]};
+        document.getElementById('meta-datetime').textContent=`${p[2]}/${p[1]}/${p[0]} at ${p[3]}:${p[4]}`;
+        document.getElementById('meta-datetime').className='meta-val good';
+        document.getElementById('manual-section').style.display='none';
+      } else showManualDate();
+    } else showManualDate();
+
+    // GPS
+    const lat=EXIF.getTag(this,'GPSLatitude'),latR=EXIF.getTag(this,'GPSLatitudeRef');
+    const lng=EXIF.getTag(this,'GPSLongitude'),lngR=EXIF.getTag(this,'GPSLongitudeRef');
+    if(lat&&lat.length===3&&lng&&lng.length===3&&latR&&lngR){
+      try{
+        const la=dms(lat,latR),lo=dms(lng,lngR);
+        if(isFinite(la)&&isFinite(lo)&&Math.abs(la)<=90&&Math.abs(lo)<=180&&!(la===0&&lo===0)){
+          currentRound.lat=la;currentRound.lng=lo;
+          document.getElementById('meta-gps').textContent=`${la.toFixed(4)}, ${lo.toFixed(4)}`;
+          document.getElementById('meta-gps').className='meta-val good';
+          document.getElementById('map-section').style.display='block';
+          if(creatorMapInst){creatorMapInst.setView([la,lo],13);setCreatorPin(la,lo);}
+          document.getElementById('creator-map-hint').textContent='GPS loaded ✓ — drag pin to adjust';
+        } else showManualGps();
+      } catch(e){showManualGps();}
+    } else showManualGps();
+
+    document.getElementById('save-round-btn').style.display='block';
+  });
+}
+
+function showManualDate(){
+  document.getElementById('meta-datetime').textContent='Not found — enter manually';
+  document.getElementById('meta-datetime').className='meta-val bad';
+  document.getElementById('manual-section').style.display='block';
+}
+function showManualGps(){
+  document.getElementById('meta-gps').textContent='Not found — click map to set';
+  document.getElementById('meta-gps').className='meta-val bad';
+  document.getElementById('map-section').style.display='block';
+  document.getElementById('meta-warn-row').style.display='flex';
+  document.getElementById('meta-warn').textContent='No GPS in photo. Click the map to set location.';
+}
+function dms(arr,ref){const d=arr[0]+arr[1]/60+arr[2]/3600;return(ref==='S'||ref==='W')?-d:d;}
+function setCreatorPin(lat,lng){
+  currentRound.lat=lat;currentRound.lng=lng;
+  if(creatorMarker)creatorMapInst.removeLayer(creatorMarker);
+  creatorMarker=L.circleMarker([lat,lng],{radius:9,fillColor:'#7c6aff',fillOpacity:1,color:'#fff',weight:2}).addTo(creatorMapInst);
+  document.getElementById('creator-map-hint').textContent=`📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+}
+
+function saveRound(){
+  if(!currentRound.answer){
+    const y=+document.getElementById('man-year').value;
+    const mo=+document.getElementById('man-month').value;
+    const d=+document.getElementById('man-day').value;
+    const h=document.getElementById('man-hour').value;
+    if(y&&mo&&d)currentRound.answer={year:y,month:mo,day:d,hour:h?+h:null};
+  }
+  if(!currentRound.imageDataUrl){toast('⚠️ Upload a photo first');return;}
+  if(!currentRound.answer){toast('⚠️ Fill in the date');return;}
+  if(currentRound.lat==null){toast('⚠️ Set a location on the map');return;}
+  creatorRounds.push({...currentRound});
+  currentRound={};
+  resetUploadUI();
+  updateProgress();
+  if(creatorRounds.length>=5){document.getElementById('upload-zone').style.display='none';toast('5 rounds saved — hit Create Game! 🎉');}
+  else toast(`Round ${creatorRounds.length} saved ✓`);
+}
+
+function resetUploadUI(){
+  const zone=document.getElementById('upload-zone');
+  zone.classList.remove('has-img');
+  const prev=document.getElementById('upload-preview');
+  prev.style.display='none';prev.src='';
+  ['uz-icon','uz-title','uz-hint'].forEach(id=>document.getElementById(id).style.display='');
+  document.getElementById('photo-input').value='';
+  document.getElementById('meta-card').classList.remove('visible');
+  document.getElementById('manual-section').style.display='none';
+  document.getElementById('map-section').style.display='none';
+  document.getElementById('meta-warn-row').style.display='none';
+  ['man-year','man-month','man-day','man-hour'].forEach(id=>document.getElementById(id).value='');
+  if(creatorMarker){creatorMapInst.removeLayer(creatorMarker);creatorMarker=null;}
+  creatorMapInst.setView([20,0],2);
+}
+
+function renderRoundsList(){
+  document.getElementById('rounds-list').innerHTML=creatorRounds.map((r,i)=>
+    `<div class="round-item">
+      <img class="round-thumb" src="${r.imageDataUrl}">
+      <div class="round-info">
+        <div class="round-info-name">Round ${i+1}</div>
+        <div class="round-info-meta">${r.answer.day}/${r.answer.month}/${r.answer.year} · ${r.lat.toFixed(2)},${r.lng.toFixed(2)}</div>
+      </div>
+      <button class="round-del" onclick="deleteRound(${i})">✕</button>
+    </div>`
+  ).join('');
+}
+function deleteRound(i){creatorRounds.splice(i,1);updateProgress();document.getElementById('upload-zone').style.display='';}
+
+async function finishGame(){
+  if(creatorRounds.length<2){toast('Add at least 2 rounds!');return;}
+  const btn=document.getElementById('finish-btn');
+  btn.textContent='⏳ Saving…';btn.disabled=true;
+  try{
+    let code,attempts=0;
+    while(attempts<5){
+      code=randCode();
+      const ex=await dbSelect('games',`select=id&code=eq.${code}`);
+      if(ex.length===0)break;
+      attempts++;
+    }
+    await dbInsert('games',{code,rounds:creatorRounds});
+    lastGameCode=code;
+    document.getElementById('share-code').textContent=code;
+    const expiry=new Date(Date.now()+7*24*60*60*1000);
+    document.getElementById('expires-note').textContent=`Expires ${expiry.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`;
+    document.getElementById('share-box').classList.add('visible');
+    btn.style.display='none';
+    document.getElementById('save-round-btn').style.display='none';
+    toast('Game is live! 🎉');
+  }catch(e){
+    toast('❌ Error: '+e.message);console.error(e);
+    btn.textContent='🚀 Create Game';btn.disabled=false;
+  }
+}
+
+function copyCode(){doCopy(lastGameCode,'Code copied ✓');}
+function copyLink(){
+  const link=`${BASE_URL}?code=${lastGameCode}`;
+  doCopy(link,'Link copied — send it! ✓');
+}
+
+// ── PLAYER ──
+let activeGame=null,playerIdx=0,playerTotal=0,playerScores=[];
+let playerMap=null,playerMarker=null,guessLat=null,guessLng=null;
+let resultMapInst=null,analysisMapInst=null;
+
+async function joinGame(){
+  const code=document.getElementById('join-code').value.trim().toUpperCase();
+  if(code.length<6){toast('Enter the full 6-digit code');return;}
+  closeJoin();
+  setLoading('Finding game…');
+  try{
+    const rows=await dbSelect('games',`select=*&code=eq.${code}`);
+    if(!rows||rows.length===0){toast('Game not found — check the code');showScreen('home');return;}
+    // Check expiry
+    const exp=new Date(rows[0].expires_at);
+    if(exp<new Date()){toast('This game has expired');showScreen('home');return;}
+    activeGame={rounds:rows[0].rounds};
+    playerIdx=0;playerTotal=0;playerScores=[];
+    startRound();
+  }catch(e){toast('❌ Error: '+e.message);showScreen('home');console.error(e);}
+}
+
+function startRound(){
+  const r=activeGame.rounds[playerIdx];
+  guessLat=null;guessLng=null;
+  const total=activeGame.rounds.length;
+  document.getElementById('round-pills').innerHTML=
+    Array.from({length:total},(_,i)=>`<div class="round-pill ${i<playerIdx?'done':i===playerIdx?'current':''}"></div>`).join('');
+  document.getElementById('score-chip').textContent=playerTotal.toLocaleString()+' pts';
+  const img=document.getElementById('game-photo');
+  img.style.opacity=0;img.src=r.imageDataUrl;img.onload=()=>{img.style.opacity=1;};
+  ['g-year','g-day'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('g-month').value='';
+  document.getElementById('g-hour').value='-1';
+  updateHourDisplay(-1);
+  document.getElementById('pin-dot').className='pin-dot';
+  document.getElementById('pin-label').textContent='No pin placed yet';
+  document.getElementById('submit-btn').disabled=true;
+  showScreen('game');
+  setTimeout(()=>{
+    if(!playerMap){
+      playerMap=L.map('player-map',{zoomControl:true,attributionControl:false}).setView([20,0],2);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(playerMap);
+      playerMap.on('click',onMapClick);
+    } else {
+      playerMap.setView([20,0],2);
+      if(playerMarker){playerMap.removeLayer(playerMarker);playerMarker=null;}
+    }
+  },80);
+}
+
+function onMapClick(e){
+  guessLat=e.latlng.lat;guessLng=e.latlng.lng;
+  if(playerMarker)playerMap.removeLayer(playerMarker);
+  playerMarker=L.circleMarker([guessLat,guessLng],{radius:8,fillColor:'#ff6a8a',fillOpacity:1,color:'#fff',weight:2}).addTo(playerMap);
+  document.getElementById('pin-dot').className='pin-dot placed';
+  document.getElementById('pin-label').textContent='Pin placed ✓';
+  checkReady();
+}
+function checkReady(){
+  const y=document.getElementById('g-year').value;
+  const m=document.getElementById('g-month').value;
+  const d=document.getElementById('g-day').value;
+  document.getElementById('submit-btn').disabled=!(y.length===4&&m&&d&&guessLat!==null);
+}
+
+// scoring
+function haversine(la1,lo1,la2,lo2){
+  const R=6371,dLa=(la2-la1)*Math.PI/180,dLo=(lo2-lo1)*Math.PI/180;
+  const a=Math.sin(dLa/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLo/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function locScore(km){return Math.round(5000*Math.pow(0.5,km/1000));}
+function dateScore(ans,g){
+  if(g.year!==ans.year)return{yearPts:0,monthPts:0,dayPts:0,hourPts:0,total:0,wrongYear:true};
+  const yearPts=1500;
+  const mD=Math.abs(g.month-ans.month);
+  const monthPts=Math.round(1500*Math.max(0,1-mD/6));
+  let dayPts=0;
+  if(mD<=1){const dD=Math.abs(g.day-ans.day);dayPts=Math.round(1500*Math.max(0,1-dD/15));}
+  let hourPts=0;
+  if(g.hour!=null&&g.hour>=0&&ans.hour!=null&&mD===0&&Math.abs(g.day-ans.day)===0){
+    hourPts=Math.round(500*Math.max(0,1-Math.abs(g.hour-ans.hour)/12));
+  }
+  return{yearPts,monthPts,dayPts,hourPts,total:yearPts+monthPts+dayPts+hourPts,wrongYear:false};
+}
+
+function submitGuess(){
+  const r=activeGame.rounds[playerIdx],ans=r.answer;
+  const hourVal=parseInt(document.getElementById('g-hour').value);
+  const g={
+    year:+document.getElementById('g-year').value,
+    month:+document.getElementById('g-month').value,
+    day:+document.getElementById('g-day').value,
+    hour:hourVal>=0?hourVal:null
+  };
+  const km=haversine(guessLat,guessLng,r.lat,r.lng);
+  const ls=locScore(km),ds=dateScore(ans,g),roundTotal=ls+ds.total;
+  playerTotal+=roundTotal;
+  playerScores.push({round:playerIdx+1,score:roundTotal,locScore:ls,dateScore:ds,
+    guess:g,answer:ans,guessLat,guessLng,correctLat:r.lat,correctLng:r.lng,km,imageDataUrl:r.imageDataUrl});
+
+  document.getElementById('result-round-label').textContent=`Round ${playerIdx+1} of ${activeGame.rounds.length}`;
+  document.getElementById('result-running').textContent=`Total: ${playerTotal.toLocaleString()}`;
+  document.getElementById('round-total').textContent=roundTotal.toLocaleString();
+  setSB('loc-pts',ls,5000,km<1?'< 1 km away':`${Math.round(km).toLocaleString()} km away`,'dist-detail');
+  if(ds.wrongYear){
+    setSB('year-pts',0,1500,`You said ${g.year}, answer is ${ans.year}`,'year-detail');
+    setSB('month-pts',0,1500,'N/A — wrong year','month-detail');
+    setSB('day-pts',0,1500,'N/A — wrong year','day-detail');
+    setSB('hour-pts',0,500,'N/A — wrong year','hour-detail');
+  } else {
+    setSB('year-pts',ds.yearPts,1500,`Correct! ${ans.year}`,'year-detail');
+    const mD=Math.abs(g.month-ans.month);
+    setSB('month-pts',ds.monthPts,1500,mD===0?'Exact month!':`${mD} month${mD>1?'s':''} off`,'month-detail');
+    const dD=Math.abs(g.day-ans.day);
+    setSB('day-pts',ds.dayPts,1500,dD===0?'Exact day!':`${dD} day${dD>1?'s':''} off`,'day-detail');
+    const hD=g.hour!=null&&ans.hour!=null?Math.abs(g.hour-ans.hour):null;
+    setSB('hour-pts',ds.hourPts,500,
+      ds.hourPts>0?`${hD}h off — +${ds.hourPts} bonus!`:g.hour!=null&&hD!=null?`${hD}h off`:'Skipped','hour-detail');
+  }
+  document.getElementById('ans-date').textContent=
+    `${ans.day} ${MONTHS[ans.month-1]} ${ans.year}${ans.hour!=null?' at '+String(ans.hour).padStart(2,'0')+':00':''}`;
+  document.getElementById('ans-your').textContent=
+    `${g.day} ${MONTHS[g.month-1]} ${g.year}${g.hour!=null?' at '+String(g.hour).padStart(2,'0')+':00':''}`;
+  document.getElementById('ans-loc').textContent=`${r.lat.toFixed(3)}, ${r.lng.toFixed(3)}`;
+  document.getElementById('next-btn').textContent=
+    playerIdx<activeGame.rounds.length-1?'Next Round →':'See Analysis →';
+
+  showScreen('result');
+  setTimeout(()=>{
+    if(resultMapInst){resultMapInst.remove();resultMapInst=null;}
+    resultMapInst=L.map('result-map',{zoomControl:true,attributionControl:false});
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(resultMapInst);
+    const cI=L.divIcon({html:`<div style="width:13px;height:13px;border-radius:50%;background:#3ddc84;border:2px solid #fff"></div>`,className:'',iconAnchor:[6,6]});
+    const gI=L.divIcon({html:`<div style="width:13px;height:13px;border-radius:50%;background:#ff6a8a;border:2px solid #fff"></div>`,className:'',iconAnchor:[6,6]});
+    L.marker([r.lat,r.lng],{icon:cI}).addTo(resultMapInst).bindTooltip('✓ Correct',{permanent:true,direction:'top'});
+    L.marker([guessLat,guessLng],{icon:gI}).addTo(resultMapInst).bindTooltip('Your pin',{permanent:true,direction:'bottom'});
+    L.polyline([[r.lat,r.lng],[guessLat,guessLng]],{color:'#7c6aff',weight:2,dashArray:'6 4',opacity:.7}).addTo(resultMapInst);
+    resultMapInst.fitBounds([[r.lat,r.lng],[guessLat,guessLng]],{padding:[50,50]});
+  },120);
+}
+
+function setSB(ptsId,pts,max,detail,detailId){
+  const el=document.getElementById(ptsId);
+  el.textContent=pts.toLocaleString();
+  const r=pts/max;
+  el.className='sb-pts'+(r>=0.95?' max':r>=0.5?' good':' bad');
+  if(detailId)document.getElementById(detailId).textContent=detail;
+}
+
+function nextRound(){
+  playerIdx++;
+  if(playerIdx>=activeGame.rounds.length)showAnalysis();
+  else startRound();
+}
+
+function showAnalysis(){
+  const maxPossible=activeGame.rounds.length*10500;
+  document.getElementById('analysis-score-chip').textContent=playerTotal.toLocaleString()+' pts';
+  document.getElementById('analysis-total').textContent=playerTotal.toLocaleString();
+  document.getElementById('analysis-max').textContent=`/ ${maxPossible.toLocaleString()} possible`;
+  const pct=playerTotal/maxPossible;
+  document.getElementById('analysis-rank').textContent=
+    pct>=.92?'🧠 Living Memory':pct>=.78?'📸 Sharp Eye':pct>=.60?'🗺 Good Memory':pct>=.40?'🤔 Fuzzy Recall':'😅 Who even are you?';
+
+  document.getElementById('rounds-analysis').innerHTML=playerScores.map((s,i)=>{
+    const ds=s.dateScore;
+    return`<div class="round-analysis-card">
+      <div class="rac-header" onclick="toggleRac(${i})">
+        <img class="rac-thumb" src="${s.imageDataUrl}">
+        <div class="rac-info">
+          <div class="rac-title">Round ${s.round}</div>
+          <div class="rac-sub">${s.score.toLocaleString()} pts · ${Math.round(s.km).toLocaleString()} km off</div>
+        </div>
+        <div class="rac-score">${s.score.toLocaleString()}</div>
+        <div class="rac-chevron" id="chev-${i}">›</div>
+      </div>
+      <div class="rac-detail" id="racd-${i}">
+        <div class="rac-breakdown">
+          <div class="rac-row"><span class="rac-row-label">📍 Location</span><span class="rac-row-val ${s.locScore>=4000?'good':s.locScore>=2000?'mid':'bad'}">${s.locScore.toLocaleString()} / 5,000</span></div>
+          <div class="rac-row"><span class="rac-row-label">📅 Year</span><span class="rac-row-val ${ds.yearPts>0?'good':'bad'}">${ds.yearPts} / 1,500${ds.wrongYear?' ✗':''}</span></div>
+          <div class="rac-row"><span class="rac-row-label">🗓 Month</span><span class="rac-row-val ${ds.monthPts>=1200?'good':ds.monthPts>0?'mid':'bad'}">${ds.monthPts} / 1,500</span></div>
+          <div class="rac-row"><span class="rac-row-label">📆 Day</span><span class="rac-row-val ${ds.dayPts>=1200?'good':ds.dayPts>0?'mid':'bad'}">${ds.dayPts} / 1,500</span></div>
+          <div class="rac-row"><span class="rac-row-label">⏰ Hour bonus</span><span class="rac-row-val ${ds.hourPts>0?'good':'mid'}">${ds.hourPts>0?'+'+ds.hourPts:'—'}</span></div>
+          <div style="height:1px;background:var(--border);margin:.5rem 0"></div>
+          <div class="rac-row"><span class="rac-row-label">Correct</span><span class="rac-row-val good">${s.answer.day} ${MONTHS[s.answer.month-1]} ${s.answer.year}${s.answer.hour!=null?' '+String(s.answer.hour).padStart(2,'0')+':00':''}</span></div>
+          <div class="rac-row"><span class="rac-row-label">Your guess</span><span class="rac-row-val">${s.guess.day} ${MONTHS[s.guess.month-1]} ${s.guess.year}${s.guess.hour!=null?' '+String(s.guess.hour).padStart(2,'0')+':00':''}</span></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  showScreen('analysis');
+  setTimeout(()=>{
+    if(analysisMapInst){analysisMapInst.remove();analysisMapInst=null;}
+    analysisMapInst=L.map('analysis-map',{zoomControl:true,attributionControl:false}).setView([20,0],2);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(analysisMapInst);
+    const allPoints=[];
+    playerScores.forEach((s,i)=>{
+      const cI=L.divIcon({html:`<div style="width:13px;height:13px;border-radius:50%;background:#3ddc84;border:2px solid #fff"></div>`,className:'',iconAnchor:[6,6]});
+      const gI=L.divIcon({html:`<div style="width:13px;height:13px;border-radius:50%;background:#ff6a8a;border:2px solid #fff"></div>`,className:'',iconAnchor:[6,6]});
+      L.marker([s.correctLat,s.correctLng],{icon:cI}).addTo(analysisMapInst).bindTooltip(`R${s.round} ✓`,{direction:'top'});
+      L.marker([s.guessLat,s.guessLng],{icon:gI}).addTo(analysisMapInst).bindTooltip(`R${s.round}`,{direction:'bottom'});
+      L.polyline([[s.correctLat,s.correctLng],[s.guessLat,s.guessLng]],{color:'#7c6aff',weight:2,dashArray:'5 4',opacity:.65}).addTo(analysisMapInst);
+      allPoints.push([s.correctLat,s.correctLng],[s.guessLat,s.guessLng]);
+    });
+    if(allPoints.length>0)analysisMapInst.fitBounds(allPoints,{padding:[40,40]});
+  },150);
+}
+
+function toggleRac(i){
+  document.getElementById(`racd-${i}`).classList.toggle('open');
+  document.getElementById(`chev-${i}`).classList.toggle('open');
+}
+
+document.getElementById('join-code').addEventListener('keydown',e=>{if(e.key==='Enter')joinGame();});
+</script>
+</body>
+</html>
